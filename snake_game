@@ -1,0 +1,463 @@
+
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.io.File;
+import java.io.IOException;
+import javax.imageio.ImageIO;
+import javax.swing.*;
+
+public class Snake {
+
+	public static void main(String[] args) {
+		SnakeFrame gameFrame = new SnakeFrame();
+	}
+}
+
+class SnakeFrame extends JFrame {
+	private static final long serialVersionUID = 1L;
+
+	public SnakeFrame() {
+		SnakePanel gamePanel = new SnakePanel();
+		Container cont = getContentPane();
+		cont.add(gamePanel);
+		setTitle("Neilo snake game");
+		setBounds(0, 0, 800, 650);
+		setResizable(false);
+		setVisible(true);
+		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+	}
+}
+
+class SnakePanel extends JPanel {
+	
+	private static final long serialVersionUID = 1L;
+	private Engine snakeEngine;
+	private javax.swing.Timer timerRepaint;
+	private javax.swing.Timer timerOfSteps;
+	private Image aim, background, body, head, endg, win0, win1, win3, wall, winner;
+	private JLabel counterBox, levelBox, roundBox;
+	private JButton start, exit;
+	private SnakePanel linkToSnakePanel;
+	
+	JButton nextLevelButton, nextRoundButton, winnerButton;
+	
+
+	// this class organize listening for keys, 
+	//which turn snake into different direction
+	public class Keys implements KeyListener {
+		public void keyPressed(KeyEvent e) {
+			int key = e.getKeyCode();
+			if (key == KeyEvent.VK_LEFT)
+				snakeEngine.newDirection = 0;
+			else if (key == KeyEvent.VK_UP)
+				snakeEngine.newDirection = 1;
+			if (key == KeyEvent.VK_RIGHT)
+				snakeEngine.newDirection = 2;
+			if (key == KeyEvent.VK_DOWN)
+				snakeEngine.newDirection = 3;
+		}
+		public void keyReleased(KeyEvent e) {}
+		public void keyTyped(KeyEvent e) {}
+	}
+	
+	public SnakePanel() {
+		linkToSnakePanel = this;
+		this.addKeyListener(new Keys());
+		this.setFocusable(true);
+		try {
+			aim = ImageIO.read(new File("C:\\aim.png"));
+			background = ImageIO.read(new File("C:\\background.png"));
+			body = ImageIO.read(new File("C:\\body.png"));
+			head = ImageIO.read(new File("C:\\head.png"));
+			endg = ImageIO.read(new File("C:\\endg.png"));
+			win0 = ImageIO.read(new File("C:\\win0.png"));
+			win1 = ImageIO.read(new File("C:\\win1.png"));
+			win3 = ImageIO.read(new File("C:\\win3.png"));
+			wall = ImageIO.read(new File("C:\\wall.png"));
+			winner = ImageIO.read(new File("C:\\winner.png"));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
+
+		snakeEngine = new Engine();
+
+		// This timer describe velocity of snake moving	
+		timerOfSteps = new javax.swing.Timer(setTimerOfSteps(snakeEngine.gameRound),	new ActionListener() {
+				public void actionPerformed(ActionEvent e) {
+					if (!snakeEngine.endGame && !snakeEngine.gamerWin) {
+						snakeEngine.moveSnakeBody();
+					}
+				}
+			});
+			timerOfSteps.start();
+			
+		// this timer describe frequency of repainting of game field
+		timerRepaint = new javax.swing.Timer(20, new ActionListener() {
+			public void actionPerformed(ActionEvent e) {
+				counterBox.setText("Count: " + (snakeEngine.gameCounter)+"/"+
+			snakeEngine.gameLevelMax*snakeEngine.gameRoundMax*snakeEngine.winLevel);
+				levelBox.setText("Level: "+snakeEngine.gameLevel+ "/"+snakeEngine.gameLevelMax);
+				roundBox.setText("Round: "+snakeEngine.gameRound+ "/"+snakeEngine.gameRoundMax);
+				repaint();
+			}
+		});
+		timerRepaint.start();
+		
+		setLayout(null);
+		
+		//Next block describe button "Count", which 
+		//looking for gamer result and accelerate snake moving
+		counterBox = new JLabel();
+		counterBox.setBounds(630, 200, 150, 50);
+		counterBox.setText("Count: ");
+		counterBox.setForeground(Color.BLACK);
+		counterBox.setFont(new Font("serif", 0, 25));
+		add(counterBox);
+		
+		levelBox = new JLabel("Level: ");
+		levelBox.setBounds(630, 270, 150, 50);
+		levelBox.setForeground(Color.BLACK);
+		levelBox.setFont(new Font("serif", 0, 30));
+		add(levelBox);
+		
+		roundBox = new JLabel("Round: ");
+		roundBox.setBounds(630, 340, 150, 50);
+		roundBox.setForeground(Color.BLACK);
+		roundBox.setFont(new Font("serif", 0, 30));
+		add(roundBox);
+
+		// Next block describe button "Start", which start the game
+		start = new JButton();
+		start.setText("New game");
+		start.setForeground(Color.BLUE);
+		start.setFont(new Font("serif", 0, 20));
+		start.setBounds(630, 30, 150, 50);
+		start.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				nextLevelButton.setVisible(false);
+				start.setFocusable(false);
+				exit.setFocusable(false);
+				linkToSnakePanel.setFocusable(true);
+				snakeEngine.endGame=false;
+				snakeEngine.gamerWin = false;
+				snakeEngine.gameRound=0;
+				snakeEngine.start();
+			}
+		});
+		add(start);
+		
+		exit = new JButton("EXIT");
+		exit.setForeground(Color.BLUE);
+		exit.setFont(new Font("serif", 0, 20));
+		exit.setBounds(630, 120, 150, 50);
+		exit.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				System.exit(0);
+			}
+		});
+		add(exit);
+
+		nextLevelButton = new JButton("Next level");
+		nextLevelButton.setForeground(Color.BLUE);
+		nextLevelButton.setFont(new Font("serif", 0, 20));
+		nextLevelButton.setBounds(150, 500, 150, 50);
+		nextLevelButton.setVisible(false);
+		nextLevelButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				snakeEngine.gamerWin=false;
+				snakeEngine.gameLevel++;
+				snakeEngine.gameRound = 0;
+				timerOfSteps.setDelay(setTimerOfSteps(snakeEngine.gameRound));
+				snakeEngine.start();
+				nextLevelButton.setVisible(false);
+				nextRoundButton.setVisible(false);
+				start.setFocusable(false);
+				exit.setFocusable(false);
+				
+			}
+		});
+		add(nextLevelButton);
+	
+	
+	nextRoundButton = new JButton("Next round");
+	nextRoundButton.setForeground(Color.BLUE);
+	nextRoundButton.setFont(new Font("serif", 0, 20));
+	nextRoundButton.setBounds(400, 500, 150, 50);
+	nextRoundButton.setVisible(false);
+	nextRoundButton.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent arg0) {
+			snakeEngine.gamerWin=false;
+			snakeEngine.gameRound++;
+			timerOfSteps.setDelay(setTimerOfSteps(snakeEngine.gameRound));
+			snakeEngine.start();
+			nextRoundButton.setVisible(false);
+			nextLevelButton.setVisible(false);
+			start.setFocusable(false);
+			exit.setFocusable(false);
+			
+		}
+	});
+	add(nextRoundButton);
+	
+	winnerButton = new JButton("", new ImageIcon(winner));
+	winnerButton.setForeground(Color.BLUE);
+	winnerButton.setBounds(130, 75, 373, 476);
+	winnerButton.setVisible(false);
+	winnerButton.addActionListener(new ActionListener() {
+		public void actionPerformed(ActionEvent arg0) {
+			snakeEngine.gamerWin=false;
+			snakeEngine.gameRound=0;
+			snakeEngine.gameLevel=0;
+			snakeEngine.gameCounter=0;
+			winnerButton.setVisible(false);
+			timerOfSteps.setDelay(setTimerOfSteps(snakeEngine.gameRound));
+			snakeEngine.start();
+			start.setFocusable(false);
+			exit.setFocusable(false);
+		}
+	});
+	add(winnerButton);
+}
+
+	// method setTimerOfSteps(int gameRound) - determine the snake speed, according to game round
+	private int setTimerOfSteps(int gameRound) {
+		int timerOfSnakeSteps=(200-gameRound*22);
+		return timerOfSnakeSteps;
+	}
+
+	public void paintComponent(Graphics gr) {
+		super.paintComponent(gr);
+		gr.drawImage(background, 0, 0, 800, 650, null);
+		for (int x = 0; x < 30; x++) {
+			for (int y = 0; y < 30; y++) {
+				if (snakeEngine.gameField[x][y] != 0) {
+					if (snakeEngine.gameField[x][y] == 1) {
+						gr.drawImage(head, 10 + y * 20, 10 + x * 20, 20, 20, null);
+					} else if (snakeEngine.gameField[x][y] == -1) {
+						gr.drawImage(aim, 10 + y * 20, 10 + x * 20, 20, 20, null);
+					} else if (snakeEngine.gameField[x][y] >= 2) {
+						gr.drawImage(body, 10 + y * 20, 10 + x * 20, 20, 20, null);
+					} else if (snakeEngine.gameField[x][y] >= -5) {
+						gr.drawImage(wall, 10 + y * 20, 10 + x * 20, 20, 20, null);
+					}
+				}
+			}
+			gr.setColor(Color.GRAY);
+			for (int i = 0; i < 31; i++) {
+				gr.drawLine(10 + i * 20, 10, 10 + i * 20, 610);
+				gr.drawLine(10, 10 + i * 20, 610, 10 + i * 20);
+			}
+			if (snakeEngine.gamerWin == true) {
+				if(snakeEngine.gameCounter==
+						snakeEngine.gameLevelMax*snakeEngine.gameRoundMax*snakeEngine.winLevel){
+							nextRoundButton.setVisible(false);
+							nextLevelButton.setVisible(false);
+							winnerButton.setVisible(true);
+							break;
+						}
+				switch (snakeEngine.winCounter%3){  
+				case (1): gr.drawImage(win0, 250, 100, 200, 100, null); break;
+				case (2): gr.drawImage(win1, 250, 100, 200, 100, null); break;
+				default: gr.drawImage(win3, 250, 100, 200, 100, null);
+				}
+			start.setFocusable(true);
+			exit.setFocusable(true);
+			nextLevelButton.setVisible(true);
+			if(snakeEngine.gameRound != snakeEngine.gameRoundMax) {
+				nextRoundButton.setVisible(true);
+				}
+			}
+			
+			if (snakeEngine.endGame == true) {
+				gr.drawImage(endg, 250, 200, 200, 100, null);
+			}
+		}
+	}
+}
+
+
+
+public class Engine {
+
+	public int [][] gameField; // variable for game field
+	public int direction=1; // direction variable: 0-to west; 1 - to north; 2 - to east; 3 - to south
+	public int newDirection=direction ; // new prefered direction
+	private int headX, headY; // head coordinates
+	public int gameCounter=0; // count gamer checked point
+	public int gameLevel=0;   // game level - describe snake speed
+	public int gameRound=0;   // game Round - describe wall environment 
+	public int gameRoundMax =5; // the highest round number 
+	public int gameLevelMax=5; // the highest level number
+	public boolean endGame;  // Characterize end of the game  
+	public int bodyLength;   // number of cell, forming snake body
+	public int winLevel=10;  // the level of counter, when gamer goes to next level
+	public boolean gamerWin=false; // characterize win stage
+	public int winCounter;
+
+	
+	public Engine(){
+		gameField = new int [30][30];	
+	}
+	
+	private void newAim(){
+		while(true){
+			int x = (int) (Math.random()*30);
+			int y = (int) (Math.random()*30);
+			
+			if(gameField[x][y]==0){
+				gameField[x][y]=-1; 
+				break;
+			}
+		}
+	}
+	
+	// Method start() will start new game: generate new start snake, new aim cell, 
+	// start snake moving, set counter to zero 
+	public void start(){
+		gameField = generateFieldWithWall(gameLevel);
+		
+		newAim();
+		gameField[27][15]=1;
+		gameField[28][15]=2;
+		gameField[29][15]=3;
+		bodyLength=3;
+		direction = 1;
+		newDirection = direction;
+		headX=27;
+		headY=15;
+		endGame=false;
+	}
+	
+public int[] [] generateFieldWithWall(int inLevel){
+		
+		for (int i = 0; i < 30; i++) {
+			for (int j = 0; j < 30; j++) {
+				gameField [i] [j] = 0;
+			}
+		}
+		
+		switch(inLevel){
+		case 0:  break;
+		
+		case 1: for (int i = 10; i < 21; i++) {	
+			gameField[10][i]=-5;
+			}break;
+		
+		case 2: for (int i = 10; i < 21; i++) {	
+			gameField[i][10]=-5;
+			gameField[i][20]=-5;
+			}break;
+		
+		case 3: for (int i = 10; i < 21; i++) {
+			gameField[10][i]=-5;
+			}
+			for (int j = 5; j < 16; j++) {
+				gameField[j][15]=-5;	
+			}
+			break;
+		
+		case 5: for (int i = 10; i < 21; i++) {  // copy case 3 and add case 4
+				gameField[10][i]=-5;
+			}
+			for (int j = 5; j < 16; j++) {
+				gameField[j][15]=-5;	
+			}
+		
+		case 4: for (int i = 0; i < 10; i++) {
+				gameField[0][i]=-5;
+				gameField[29][i]=-5;
+				gameField[i][0]=-5;
+				gameField[i][29]=-5;
+			}
+			for (int i = 20; i < 30; i++) {
+				gameField[0][i]=-5;
+				gameField[29][i]=-5;
+				gameField[i][0]=-5;
+				gameField[i][29]=-5;	
+			}
+			break;	
+		default: break;
+		}	
+		return gameField;
+	}
+	
+	
+	//this method analyze snake moving direction and 
+	//generate special number of the event coming next step  
+	private int headMove(){
+		// this block predict what the cell will be on the next snake head
+		if(direction==0){
+			if((headY-1)>=0) headY--;
+			else headY = 29; //variant for "no wall" game
+			//else endGame=true;  //variant for "inside wall" game
+		}
+		else if(direction==1){ 
+			if((headX-1)>=0) {headX--;}
+			else headX=29; //variant for "no wall" game
+			//else endGame=true;  //variant for "inside wall" game
+		}
+		else if(direction==2){
+			if((headY+1)<=29) headY++;
+			else headY =0; //variant for "no wall" game
+			//else endGame=true; //variant for "inside wall" game
+		}
+		else if(direction==3){
+			if((headX+1)<=29) headX++;
+			else headX=0; //variant for "no wall" game
+			//else endGame=true; //variant for "inside wall" game
+		}
+		if (gameField[headX][headY]==-1){  // have caught current aim
+			newAim();
+		}
+		
+		// next block analyze next cell for head and generate 
+		//special number (int) of such operation 
+		int result = 0;								// special number for next step 
+		if (gameField[headX][headY]==1) result = 0;   // general case -> put head into this cell	
+		if(gameField[headX][headY]==-1) result =1;  //  caught aim
+		else if(gameField[headX][headY]==0) result =2;  // move on free cell 
+		else if(gameField[headX][headY]>1) result =3;  // will catch snake tail
+		else if(gameField[headX][headY]==-5) result =4;  // will catch snake tail
+		
+		gameField[headX][headY]= -2;
+		return result;
+	}
+	
+	// method reverse() forbid changing of snake moving direction to the opposite
+	private void reverse(){
+		if((Math.abs(newDirection - direction))!=2){
+			direction=newDirection;
+		}
+	}
+	
+	// method moveSnakeBody() analyze next snake step and 
+	//assign new value for all of the cell, or generate end-icon  
+	public void moveSnakeBody(){
+		if (direction != newDirection) reverse();
+		int flag = headMove();
+		if(flag==3) endGame = true;  // if we hit own tail -> stop the game
+		if (flag==4)endGame = true; // if we hit the wall
+		for (int x = 0; x < 30; x++) {
+			for (int y = 0; y < 30; y++) {
+				if (gameField[x][y]>0)gameField[x][y]++;     // put body here
+				else if(gameField[x][y]==-2) gameField[x][y]=1; // put head here
+				if(flag!=1) {
+					if (gameField[x][y]==(bodyLength+1)) gameField[x][y]=0;
+				}
+			}
+		}
+		if(flag==1){
+			bodyLength++;
+			gameCounter++;
+			if(gameCounter>0 && ((gameCounter % winLevel)==0)){ 
+				gamerWin=true;
+				winCounter++;
+			}
+		}	
+	}		
+}
+
+
